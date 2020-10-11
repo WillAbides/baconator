@@ -1,3 +1,5 @@
 tmp/
 bin/
 .bindown/
+.env
+/internal/graph/testdata
