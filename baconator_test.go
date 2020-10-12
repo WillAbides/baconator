@@ -26,7 +26,7 @@ func TestCenter(t *testing.T) {
 	require.Greater(t, res.AvgDistance, 2.0)
 }
 
-func fileExistsT(t *testing.T, filename string) bool {
+func fileExists(t *testing.T, filename string) bool {
 	t.Helper()
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -55,7 +55,7 @@ func newTestBaconator(t *testing.T) *Baconator {
 	err := os.MkdirAll("tmp", 0o700)
 	require.NoError(t, err)
 	gobFilename := filepath.FromSlash("tmp/baconator.gob")
-	if fileExistsT(t, gobFilename) {
+	if fileExists(t, gobFilename) {
 		var file *os.File
 		file, err = os.Open(gobFilename)
 		require.NoError(t, err)
@@ -65,7 +65,7 @@ func newTestBaconator(t *testing.T) *Baconator {
 		return &baconator
 	}
 	dataFilename := filepath.FromSlash("tmp/data.txt.bz2")
-	if !fileExistsT(t, dataFilename) {
+	if !fileExists(t, dataFilename) {
 		downloadTestData(t)
 	}
 	movies, err := loadMovies(dataFilename)
