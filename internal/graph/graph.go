@@ -3,8 +3,6 @@ package graph
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
-	"fmt"
 	"sort"
 	"sync"
 )
@@ -14,63 +12,48 @@ type Node uint32
 
 // Graph is a graph of connected Nodes
 type Graph struct {
-	neighborIndex  []int
-	neighbors      []Node
+	// edgeIndex is used to find edges for a source node.
+	//
+	// The key is the source node and the value is the position in edgeTargets
+	// where the slice of the node's edge targets begins.
+	edgeIndex []int
+
+	edgeTargets    []Node
 	slicePool      sync.Pool
 	parentsMapPool sync.Pool
 }
 
 // New creates a new Graph
-//  NodeNeighbors is a list of neighbors where the index is the node id and the
-//   value is that node's neighbors
-//  NodeNeighbors[0] is special. It isn't a valid node in the Graph. It can have no
-//   neighbors and no node can have zero as a neighbor.
-func New(nodeNeighbors [][]Node) (*Graph, error) {
-	if len(nodeNeighbors) == 0 {
-		return nil, fmt.Errorf("nodeNeighbors can't be empty")
-	}
+//
+// nodeNeighbors is a list of neighbors where the index is the node id and the
+// value is that node's neighbors
+func New(nodeNeighbors [][]Node) *Graph {
 	var neighborSize int
 	for _, neighbors := range nodeNeighbors {
 		neighborSize += len(neighbors)
 	}
 	var g Graph
-	g.neighbors = make([]Node, 0, neighborSize)
-	g.neighborIndex = make([]int, 0, len(nodeNeighbors)+1)
-	g.neighborIndex = append(g.neighborIndex, len(g.neighbors))
+	g.edgeTargets = make([]Node, 0, neighborSize)
+	g.edgeIndex = make([]int, 0, len(nodeNeighbors)+1)
+	g.edgeIndex = append(g.edgeIndex, len(g.edgeTargets))
 	for _, neighbors := range nodeNeighbors {
-		g.neighbors = append(g.neighbors, neighbors...)
-		g.neighborIndex = append(g.neighborIndex, len(g.neighbors))
+		g.edgeTargets = append(g.edgeTargets, neighbors...)
+		g.edgeIndex = append(g.edgeIndex, len(g.edgeTargets))
 	}
 	g.createPools()
-	return &g, nil
-}
-
-// Neighbors returns a copy the neighbors slice. This is memory intensive,
-//  so don't use it in production code.
-func (g *Graph) Neighbors() []Node {
-	res := make([]Node, len(g.neighbors))
-	copy(res, g.neighbors)
-	return res
-}
-
-// NeighborIndex returns a copy of the neighborIndex slice.  This is memory intensive,
-//  so don't use it in production code.
-func (g *Graph) NeighborIndex() []int {
-	res := make([]int, len(g.neighborIndex))
-	copy(res, g.neighborIndex)
-	return res
+	return &g
 }
 
 func (g *Graph) createPools() {
 	g.slicePool = sync.Pool{
 		New: func() interface{} {
-			slice := make([]Node, 0, len(g.neighbors))
+			slice := make([]Node, 0, len(g.edgeTargets))
 			return &slice
 		},
 	}
 	g.parentsMapPool = sync.Pool{
 		New: func() interface{} {
-			return newParentsMap(len(g.neighborIndex) - 1)
+			return newParentsMap(len(g.edgeIndex) - 1)
 		},
 	}
 }
@@ -96,13 +79,13 @@ func (g *Graph) returnLevelSlice(slice *[]Node) {
 
 // NodeNeighbors returns n's immediate neighbors
 func (g *Graph) NodeNeighbors(n Node) []Node {
-	start, end := g.neighborIndex[n], g.neighborIndex[n+1]
-	return g.neighbors[start:end]
+	start, end := g.edgeIndex[n], g.edgeIndex[n+1]
+	return g.edgeTargets[start:end]
 }
 
 // FindLevels returns the hop count of each node in the graph
 func (g *Graph) FindLevels(source Node) []int {
-	size := len(g.neighborIndex) - 1
+	size := len(g.edgeIndex) - 1
 	level := make([]int, size)
 	currentLevel := make([]Node, 0, size)
 	nextLevel := make([]Node, 0, size)
@@ -147,7 +130,7 @@ func (g *Graph) FindPath(path *[]Node, maxPathLength int, source, dest Node, pri
 	if maxPathLength <= 0 {
 		maxPathLength = defaultMaxPathLength
 	}
-	size := len(g.neighborIndex) - 1
+	size := len(g.edgeIndex) - 1
 	if source >= Node(size) || dest >= Node(size) {
 		setPathLen(path, 0)
 		return
@@ -268,8 +251,8 @@ func prioritySort(nodes *[]Node, fn PriorityFunc) {
 }
 
 type graphSerializer struct {
-	Neighbors     []Node `json:"neighbors"`
-	NeighborIndex []int  `json:"neighborIndex"`
+	EdgeTargets []Node `json:"neighbors"`
+	EdgeIndex   []int  `json:"edgeIndex"`
 }
 
 // GobDecode implements gob.GobDecoder
@@ -279,8 +262,8 @@ func (g *Graph) GobDecode(p []byte) error {
 	if err != nil {
 		return err
 	}
-	g.neighbors = gs.Neighbors
-	g.neighborIndex = gs.NeighborIndex
+	g.edgeTargets = gs.EdgeTargets
+	g.edgeIndex = gs.EdgeIndex
 	g.createPools()
 	return nil
 }
@@ -288,8 +271,8 @@ func (g *Graph) GobDecode(p []byte) error {
 // GobEncode implements gob.GobEncoder
 func (g *Graph) GobEncode() ([]byte, error) {
 	gs := graphSerializer{
-		Neighbors:     g.neighbors,
-		NeighborIndex: g.neighborIndex,
+		EdgeTargets: g.edgeTargets,
+		EdgeIndex:   g.edgeIndex,
 	}
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(&gs)
@@ -297,26 +280,4 @@ func (g *Graph) GobEncode() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler
-func (g *Graph) UnmarshalJSON(p []byte) error {
-	var gs graphSerializer
-	err := json.Unmarshal(p, &gs)
-	if err != nil {
-		return err
-	}
-	g.neighbors = gs.Neighbors
-	g.neighborIndex = gs.NeighborIndex
-	g.createPools()
-	return nil
-}
-
-// MarshalJSON implements json.Marshaler
-func (g *Graph) MarshalJSON() ([]byte, error) {
-	gs := graphSerializer{
-		Neighbors:     g.neighbors,
-		NeighborIndex: g.neighborIndex,
-	}
-	return json.Marshal(&gs)
 }

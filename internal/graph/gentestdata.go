@@ -55,10 +55,7 @@ func generateTestDataFile(filename string, force bool, opts *testDataOpts) error
 		return nil
 	}
 	data := genTestData2(opts)
-	graph, err := New(data)
-	if err != nil {
-		return err
-	}
+	graph := New(data)
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

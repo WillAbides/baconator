@@ -42,9 +42,8 @@ func TestNew(t *testing.T) {
 			6: {5, 7},
 			7: {6},
 		}
-		g, err := New(neighbors)
-		require.NoError(t, err)
-		require.Equal(t, 9, len(g.neighborIndex))
+		g := New(neighbors)
+		require.Equal(t, 9, len(g.edgeIndex))
 	})
 }
 
@@ -60,8 +59,7 @@ func TestGraph_FindPath(t *testing.T) {
 			6: {5, 7},
 			7: {6},
 		}
-		g, err := New(neighbors)
-		require.NoError(t, err)
+		g := New(neighbors)
 
 		tst := func(tt *testing.T, src, dest Node, want []Node) {
 			tt.Helper()
@@ -93,8 +91,7 @@ func TestGraph_FindPath(t *testing.T) {
 			6: {5, 7},
 			7: {6},
 		}
-		g, err := New(neighbors)
-		require.NoError(t, err)
+		g := New(neighbors)
 		var path []Node
 		g.FindPath(&path, 0, 0, 7, func(node Node) int64 {
 			if node == 4 {
@@ -115,8 +112,7 @@ func TestGraph_NodeNeighbors(t *testing.T) {
 		4: {3, 5},
 		5: {4},
 	}
-	g, err := New(neighbors)
-	require.NoError(t, err)
+	g := New(neighbors)
 	for n, neighbors := range neighbors {
 		require.Equal(t, neighbors, g.NodeNeighbors(Node(n)))
 	}

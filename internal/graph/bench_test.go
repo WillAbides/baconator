@@ -10,7 +10,7 @@ func BenchmarkGraph_FindPath(b *testing.B) {
 	rnd := rand.New(rand.NewSource(0))
 	b.Run("100k", func(b *testing.B) {
 		g := graphFromGob(b, "100k_graph.gob")
-		llen := len(g.NeighborIndex()) - 1
+		llen := len(g.edgeIndex) - 1
 		src := Node(rnd.Intn(llen))
 		dest := Node(rnd.Intn(llen))
 		b.ResetTimer()
@@ -22,7 +22,7 @@ func BenchmarkGraph_FindPath(b *testing.B) {
 
 	b.Run("1000k", func(b *testing.B) {
 		g := graphFromGob(b, "1MM_graph.gob")
-		llen := len(g.NeighborIndex()) - 1
+		llen := len(g.edgeIndex) - 1
 		src := Node(rnd.Intn(llen))
 		dest := Node(rnd.Intn(llen))
 		b.ResetTimer()

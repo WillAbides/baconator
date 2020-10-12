@@ -70,8 +70,7 @@ func newTestBaconator(t *testing.T) *Baconator {
 	}
 	movies, err := loadMovies(dataFilename)
 	require.NoError(t, err)
-	baconator, err := buildBaconator(movies)
-	require.NoError(t, err)
+	baconator := buildBaconator(movies)
 	file, err := os.Create(gobFilename)
 	require.NoError(t, err)
 	err = gob.NewEncoder(file).Encode(baconator)

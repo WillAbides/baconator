@@ -53,10 +53,7 @@ func (b *Baconator) LoadFromDatafile(filename string) error {
 	if err != nil {
 		return err
 	}
-	bac, err := buildBaconator(movies)
-	if err != nil {
-		return err
-	}
+	bac := buildBaconator(movies)
 	*b = *bac
 	return nil
 }
@@ -143,7 +140,7 @@ func parseCastName(nm string) string {
 	return parts[len(parts)-1]
 }
 
-func buildBaconator(movies map[string]*movie) (*Baconator, error) {
+func buildBaconator(movies map[string]*movie) *Baconator {
 	movieCast, castMovies := buildNeighbors(movies)
 
 	b := Baconator{
@@ -181,15 +178,11 @@ func buildBaconator(movies map[string]*movie) (*Baconator, error) {
 			b.CastNodes[castMember] = node
 		}
 	}
-	var err error
-	b.Graph, err = b.buildGraph(movieCast, castMovies)
-	if err != nil {
-		return nil, err
-	}
-	return &b, nil
+	b.Graph = b.buildGraph(movieCast, castMovies)
+	return &b
 }
 
-func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) (*graph.Graph, error) {
+func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) *graph.Graph {
 	neighborhood := make([][]graph.Node, len(b.NodeInfo))
 	for n := graph.Node(0); int(n) < len(b.NodeInfo); n++ {
 		info := b.NodeInfo[n]
@@ -200,7 +193,7 @@ func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) (*graph.Gr
 			for _, castMember := range cast {
 				nn, ok := b.CastNodes[castMember]
 				if !ok {
-					return nil, fmt.Errorf("node doesn't exist")
+					panic("node doesn't exist")
 				}
 				neighborhood[n] = append(neighborhood[n], nn)
 			}
@@ -211,13 +204,13 @@ func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) (*graph.Gr
 			for _, film := range movies {
 				nn, ok := b.MovieNodes[film]
 				if !ok {
-					return nil, fmt.Errorf("node doesn't exist")
+					panic("node doesn't exist")
 				}
 				neighborhood[n] = append(neighborhood[n], nn)
 			}
 			sortNodes(neighborhood[n])
 		default:
-			return nil, fmt.Errorf("unexpected node type")
+			panic("unexpected node type")
 		}
 	}
 	return graph.New(neighborhood)
