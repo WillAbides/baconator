@@ -16,6 +16,11 @@ bin/gobin:
 bin/baconator: gobuildcache
 	${GOBUILD} -o $@ ./cmd/baconator
 
+BENCHSTAT_REF := 9c9101da83161dff5e53fc89bf35ed49ea286db8
+bin/benchstat: bin/gobin
+	GOBIN=${CURDIR}/bin \
+	bin/gobin golang.org/x/perf/cmd/benchstat@$(BENCHSTAT_REF)
+
 HANDCRAFTED_REV := 082e94edadf89c33db0afb48889c8419a2cb46a9
 bin/handcrafted: bin/gobin
 	GOBIN=${CURDIR}/bin \

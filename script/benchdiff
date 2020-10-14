@@ -1,0 +1,106 @@
+#!/bin/bash
+#/
+#/ benchdiff runs `go test -bench` on your working tree and a baseline commit, then runs benchstat on the results.
+#/
+#/ Usage: script/benchdiff [options]
+#/
+#/  -p ./...    Package to benchmark
+#/  -b HEAD     Benchmark's baseline ref
+#/  -r .        Regex for the benchmarks to run, This regex matches the part of the Benchmark func after "Benchmark"
+#/  -f          Force running the baseline even if it already exists
+#/  -c          `go test` command to run instead of the default seen below
+#/  -n 10       Number of times to run each benchmark
+#/
+
+# benchdiff is for comparing benchmarks in the current working tree with a baseline (default HEAD)
+#  see code for environment variable options.
+
+set -e
+
+usage="$(tail -n +2 "$0" | grep ^#/ | cut -c4-)"
+
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+
+benchdiff_pkg="./..."
+benchdiff_benchmark="."
+benchdiff_cmd=""
+benchdiff_base="HEAD"
+benchdiff_force_base=""
+count="10"
+
+while getopts "hfp:b:c:r:n:" opt; do
+  case "$opt" in
+  h)
+    echo "$usage"
+    exit
+    ;;
+  p)
+    benchdiff_pkg=$OPTARG
+    ;;
+  c)
+    benchdiff_cmd=$OPTARG
+    ;;
+  b)
+    benchdiff_base=$OPTARG
+    ;;
+  r)
+    benchdiff_benchmark=$OPTARG
+    ;;
+  f)
+    benchdiff_force_base="1"
+    ;;
+  n)
+    count=$OPTARG
+    ;;
+  *)
+    echo "$usage"
+    exit 1
+    ;;
+  esac
+done
+
+make -s bin/benchstat
+
+# the command to use
+benchdiff_cmd="${benchdiff_cmd:="go test -bench $benchdiff_benchmark -run '^$' -benchtime 10ms -benchmem -count $count $benchdiff_pkg"}"
+
+working_output="tmp/benchdiff-workingtree.out"
+$benchdiff_cmd >"$working_output"
+
+base_ref="$(git rev-parse "$benchdiff_base")"
+
+if [ "$base_ref" = "$(git rev-parse HEAD)" ] && [ -z "$(git status --porcelain)" ]; then
+  echo "benchmarking code against itself is silly and benchdiff refuses to participate"
+  exit 1
+fi
+
+base_sum="$(echo "$benchdiff_cmd $base_ref" | cksum | cut -d " " -f1 )"
+
+base_output="tmp/benchdiff-$base_sum.out"
+
+# skip the rest if the baseline already exists and force isn't set
+if [ -f "$base_output" ] && [ -z "$benchdiff_force_base" ]; then
+  bin/benchstat "$base_output" "$working_output"
+  exit
+fi
+
+cleanup_stash_pop=""
+cleanup_git_checkout=""
+
+cleanup() {
+  [ -n "$cleanup_git_checkout" ] && git checkout --quiet -
+  [ -n "$cleanup_stash_pop" ] && git stash pop --quiet
+}
+
+trap 'cleanup' EXIT
+
+if [ -n "$(git status --porcelain)" ]; then
+  git stash push --quiet
+  cleanup_stash_pop="1"
+fi
+
+git checkout --quiet "$base_ref"
+cleanup_git_checkout="1"
+$benchdiff_cmd >"$base_output"
+
+bin/benchstat "$base_output" "$working_output"
