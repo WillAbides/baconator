@@ -54,7 +54,7 @@ func generateTestDataFile(filename string, force bool, opts *testDataOpts) error
 	if exists && !force {
 		return nil
 	}
-	data := genTestData2(opts)
+	data := genTestData(opts)
 	graph := New(data)
 	file, err := os.Create(filename)
 	if err != nil {
@@ -63,7 +63,7 @@ func generateTestDataFile(filename string, force bool, opts *testDataOpts) error
 	return gob.NewEncoder(file).Encode(graph)
 }
 
-func genTestData2(opts *testDataOpts) [][]Node {
+func genTestData(opts *testDataOpts) [][]Node {
 	if opts == nil {
 		opts = &testDataOpts{}
 	}
@@ -86,7 +86,7 @@ func genTestData2(opts *testDataOpts) [][]Node {
 	data := make([][]Node, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		if len(data[i]) == 0 {
-			allocateNodes2(sliceSize, &data[i], &bigSlice)
+			allocateNodes(sliceSize, &data[i], &bigSlice)
 		}
 		neighborCount := rnd.Intn(maxNeighbors-minNeighbors) + minNeighbors
 		for j := 0; j < neighborCount; j++ {
@@ -96,7 +96,7 @@ func genTestData2(opts *testDataOpts) [][]Node {
 			}
 			data[i] = append(data[i], neighbor)
 			if len(data[neighbor]) == 0 {
-				allocateNodes2(sliceSize, &data[neighbor], &bigSlice)
+				allocateNodes(sliceSize, &data[neighbor], &bigSlice)
 			}
 			data[neighbor] = append(data[neighbor], Node(i))
 		}
@@ -104,7 +104,7 @@ func genTestData2(opts *testDataOpts) [][]Node {
 	return data
 }
 
-func allocateNodes2(size int, nodes, buf *[]Node) {
+func allocateNodes(size int, nodes, buf *[]Node) {
 	if len(*nodes) > 0 {
 		return
 	}
