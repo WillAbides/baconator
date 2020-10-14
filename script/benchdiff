@@ -10,6 +10,7 @@
 #/  -f          Force running the baseline even if it already exists
 #/  -c          `go test` command to run instead of the default seen below
 #/  -n 10       Number of times to run each benchmark
+#/  -t 1s       How long to run each benchmark
 #/
 
 # benchdiff is for comparing benchmarks in the current working tree with a baseline (default HEAD)
@@ -26,9 +27,10 @@ benchdiff_benchmark="."
 benchdiff_cmd=""
 benchdiff_base="HEAD"
 benchdiff_force_base=""
+benchdiff_time="1s"
 count="10"
 
-while getopts "hfp:b:c:r:n:" opt; do
+while getopts "hfp:b:c:r:n:t:" opt; do
   case "$opt" in
   h)
     echo "$usage"
@@ -52,6 +54,9 @@ while getopts "hfp:b:c:r:n:" opt; do
   n)
     count=$OPTARG
     ;;
+  t)
+    benchdiff_time=$OPTARG
+    ;;
   *)
     echo "$usage"
     exit 1
@@ -62,7 +67,7 @@ done
 make -s bin/benchstat
 
 # the command to use
-benchdiff_cmd="${benchdiff_cmd:="go test -bench $benchdiff_benchmark -run '^$' -benchtime 10ms -benchmem -count $count $benchdiff_pkg"}"
+benchdiff_cmd="${benchdiff_cmd:="go test -bench $benchdiff_benchmark -run '^$' -benchtime $benchdiff_time -benchmem -count $count $benchdiff_pkg"}"
 
 working_output="tmp/benchdiff-workingtree.out"
 $benchdiff_cmd >"$working_output"
