@@ -63,7 +63,7 @@ func generateTestDataFile(filename string, force bool, opts *testDataOpts) error
 	return gob.NewEncoder(file).Encode(graph)
 }
 
-func genTestData(opts *testDataOpts) [][]Node {
+func genTestData(opts *testDataOpts) [][]NodeIdx {
 	if opts == nil {
 		opts = &testDataOpts{}
 	}
@@ -81,30 +81,30 @@ func genTestData(opts *testDataOpts) [][]Node {
 		maxNeighbors = 10
 	}
 	sliceSize := 2 * maxNeighbors
-	bigSlice := make([]Node, nodeCount*(int(float64(sliceSize)*1.1)))
+	bigSlice := make([]NodeIdx, nodeCount*(int(float64(sliceSize)*1.1)))
 	rnd := rand.New(randSource)
-	data := make([][]Node, nodeCount)
+	data := make([][]NodeIdx, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		if len(data[i]) == 0 {
 			allocateNodes(sliceSize, &data[i], &bigSlice)
 		}
 		neighborCount := rnd.Intn(maxNeighbors-minNeighbors) + minNeighbors
 		for j := 0; j < neighborCount; j++ {
-			neighbor := Node(rnd.Intn(nodeCount))
-			if neighbor == Node(i) {
+			neighbor := NodeIdx(rnd.Intn(nodeCount))
+			if neighbor == NodeIdx(i) {
 				continue
 			}
 			data[i] = append(data[i], neighbor)
 			if len(data[neighbor]) == 0 {
 				allocateNodes(sliceSize, &data[neighbor], &bigSlice)
 			}
-			data[neighbor] = append(data[neighbor], Node(i))
+			data[neighbor] = append(data[neighbor], NodeIdx(i))
 		}
 	}
 	return data
 }
 
-func allocateNodes(size int, nodes, buf *[]Node) {
+func allocateNodes(size int, nodes, buf *[]NodeIdx) {
 	if len(*nodes) > 0 {
 		return
 	}
@@ -112,6 +112,6 @@ func allocateNodes(size int, nodes, buf *[]Node) {
 		*nodes = (*buf)[0:0:size]
 		*buf = (*buf)[size:]
 	} else {
-		*nodes = make([]Node, 0, size)
+		*nodes = make([]NodeIdx, 0, size)
 	}
 }

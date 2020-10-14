@@ -29,15 +29,15 @@ type movie struct {
 }
 
 type nodeInfo struct {
-	Node graph.Node
+	Node graph.NodeIdx
 	Type nodeType
 	Name string
 }
 
 // Baconator is kind of a big deal around here
 type Baconator struct {
-	CastNodes  map[string]graph.Node
-	MovieNodes map[string]graph.Node
+	CastNodes  map[string]graph.NodeIdx
+	MovieNodes map[string]graph.NodeIdx
 	NodeInfo   []nodeInfo
 	Graph      *graph.Graph
 	Movies     map[string]*movie
@@ -144,15 +144,15 @@ func buildBaconator(movies map[string]*movie) *Baconator {
 	movieCast, castMovies := buildNeighbors(movies)
 
 	b := Baconator{
-		CastNodes:  make(map[string]graph.Node, len(movieCast)),
-		MovieNodes: make(map[string]graph.Node, len(movieCast)),
+		CastNodes:  make(map[string]graph.NodeIdx, len(movieCast)),
+		MovieNodes: make(map[string]graph.NodeIdx, len(movieCast)),
 		NodeInfo:   make([]nodeInfo, 0, len(movieCast)+len(castMovies)),
 		Movies:     movies,
 	}
 
 	for _, title := range movieCast.sortedKeys() {
 		if _, ok := b.MovieNodes[title]; !ok {
-			node := graph.Node(len(b.NodeInfo))
+			node := graph.NodeIdx(len(b.NodeInfo))
 			b.NodeInfo = append(b.NodeInfo, nodeInfo{
 				Node: node,
 				Type: movieNode,
@@ -169,7 +169,7 @@ func buildBaconator(movies map[string]*movie) *Baconator {
 			if _, ok := b.CastNodes[castMember]; ok {
 				continue
 			}
-			node := graph.Node(len(b.NodeInfo))
+			node := graph.NodeIdx(len(b.NodeInfo))
 			b.NodeInfo = append(b.NodeInfo, nodeInfo{
 				Node: node,
 				Type: castNode,
@@ -183,13 +183,13 @@ func buildBaconator(movies map[string]*movie) *Baconator {
 }
 
 func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) *graph.Graph {
-	neighborhood := make([][]graph.Node, len(b.NodeInfo))
-	for n := graph.Node(0); int(n) < len(b.NodeInfo); n++ {
+	neighborhood := make([][]graph.NodeIdx, len(b.NodeInfo))
+	for n := graph.NodeIdx(0); int(n) < len(b.NodeInfo); n++ {
 		info := b.NodeInfo[n]
 		switch info.Type {
 		case movieNode:
 			cast := movieCast.sortedValues(info.Name)
-			neighborhood[n] = make([]graph.Node, 0, len(cast))
+			neighborhood[n] = make([]graph.NodeIdx, 0, len(cast))
 			for _, castMember := range cast {
 				nn, ok := b.CastNodes[castMember]
 				if !ok {
@@ -200,7 +200,7 @@ func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) *graph.Gra
 			sortNodes(neighborhood[n])
 		case castNode:
 			movies := castMovies.sortedValues(info.Name)
-			neighborhood[n] = make([]graph.Node, 0, len(movies))
+			neighborhood[n] = make([]graph.NodeIdx, 0, len(movies))
 			for _, film := range movies {
 				nn, ok := b.MovieNodes[film]
 				if !ok {
@@ -216,7 +216,7 @@ func (b *Baconator) buildGraph(movieCast, castMovies stringNeighbors) *graph.Gra
 	return graph.New(neighborhood)
 }
 
-func sortNodes(nodes []graph.Node) {
+func sortNodes(nodes []graph.NodeIdx) {
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
 }
 
@@ -254,8 +254,8 @@ func (b *Baconator) links(src, dest string) ([]linksResult, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown cast member: %q", dest)
 	}
-	var path []graph.Node
-	var pri graph.PriorityFunc = func(node graph.Node) int64 {
+	var path []graph.NodeIdx
+	var pri graph.PriorityFunc = func(node graph.NodeIdx) int64 {
 		info := b.NodeInfo[node]
 		if info.Type != movieNode {
 			return 0
@@ -290,7 +290,7 @@ type centerResult struct {
 	AvgDistance float64     `json:"average_distance"`
 }
 
-func (b *Baconator) center(center graph.Node) *centerResult {
+func (b *Baconator) center(center graph.NodeIdx) *centerResult {
 	result := centerResult{
 		Distance: map[int]int{},
 	}

@@ -7,8 +7,8 @@ import (
 	"sync"
 )
 
-// Node is a graph node
-type Node uint32
+// NodeIdx is the index where a node can be found
+type NodeIdx uint32
 
 // Graph is a graph of connected Nodes
 type Graph struct {
@@ -18,7 +18,7 @@ type Graph struct {
 	// where the slice of the node's edge targets begins.
 	edgeIndex []int
 
-	edgeTargets    []Node
+	edgeTargets    []NodeIdx
 	slicePool      sync.Pool
 	parentsMapPool sync.Pool
 }
@@ -27,13 +27,13 @@ type Graph struct {
 //
 // nodeNeighbors is a list of neighbors where the index is the node id and the
 // value is that node's neighbors
-func New(nodeNeighbors [][]Node) *Graph {
+func New(nodeNeighbors [][]NodeIdx) *Graph {
 	var neighborSize int
 	for _, neighbors := range nodeNeighbors {
 		neighborSize += len(neighbors)
 	}
 	var g Graph
-	g.edgeTargets = make([]Node, 0, neighborSize)
+	g.edgeTargets = make([]NodeIdx, 0, neighborSize)
 	g.edgeIndex = make([]int, 0, len(nodeNeighbors)+1)
 	g.edgeIndex = append(g.edgeIndex, len(g.edgeTargets))
 	for _, neighbors := range nodeNeighbors {
@@ -47,7 +47,7 @@ func New(nodeNeighbors [][]Node) *Graph {
 func (g *Graph) createPools() {
 	g.slicePool = sync.Pool{
 		New: func() interface{} {
-			slice := make([]Node, 0, len(g.edgeTargets))
+			slice := make([]NodeIdx, 0, len(g.edgeTargets))
 			return &slice
 		},
 	}
@@ -67,28 +67,28 @@ func (g *Graph) returnParentsMap(mp *parentsMap) {
 	g.parentsMapPool.Put(mp)
 }
 
-func (g *Graph) borrowLevelSlice() *[]Node {
-	s := g.slicePool.Get().(*[]Node)
+func (g *Graph) borrowLevelSlice() *[]NodeIdx {
+	s := g.slicePool.Get().(*[]NodeIdx)
 	*s = (*s)[:0]
 	return s
 }
 
-func (g *Graph) returnLevelSlice(slice *[]Node) {
+func (g *Graph) returnLevelSlice(slice *[]NodeIdx) {
 	g.slicePool.Put(slice)
 }
 
 // NodeNeighbors returns n's immediate neighbors
-func (g *Graph) NodeNeighbors(n Node) []Node {
+func (g *Graph) NodeNeighbors(n NodeIdx) []NodeIdx {
 	start, end := g.edgeIndex[n], g.edgeIndex[n+1]
 	return g.edgeTargets[start:end]
 }
 
 // FindLevels returns the hop count of each node in the graph
-func (g *Graph) FindLevels(source Node) []int {
+func (g *Graph) FindLevels(source NodeIdx) []int {
 	size := len(g.edgeIndex) - 1
 	level := make([]int, size)
-	currentLevel := make([]Node, 0, size)
-	nextLevel := make([]Node, 0, size)
+	currentLevel := make([]NodeIdx, 0, size)
+	nextLevel := make([]NodeIdx, 0, size)
 	visited := newParentsMap(size)
 	level[source] = 1
 	currentLevel = append(currentLevel, source)
@@ -118,20 +118,20 @@ func (g *Graph) FindLevels(source Node) []int {
 // PriorityFunc returns a node's priority when choosing between nodes.  This is not cost.
 //  The shortest path still wins no matter the priority. Higher number is higher priority. 2 gets
 //  chosen before 1.
-type PriorityFunc func(node Node) int64
+type PriorityFunc func(node NodeIdx) int64
 
 // FindPath finds the shortest path from source to dest
 //  When there are multiple shortest paths, FindPath may return any one of those paths.
 //  The first element of the returned path is always source, and the last element is always dest.
 //  path - is a pointer to a slice that FindPath will set to the found path
 //  When no path is found, path will be set to zero length
-func (g *Graph) FindPath(path *[]Node, maxPathLength int, source, dest Node, priorityFn PriorityFunc) {
+func (g *Graph) FindPath(path *[]NodeIdx, maxPathLength int, source, dest NodeIdx, priorityFn PriorityFunc) {
 	const defaultMaxPathLength = 9
 	if maxPathLength <= 0 {
 		maxPathLength = defaultMaxPathLength
 	}
 	size := len(g.edgeIndex) - 1
-	if source >= Node(size) || dest >= Node(size) {
+	if source >= NodeIdx(size) || dest >= NodeIdx(size) {
 		setPathLen(path, 0)
 		return
 	}
@@ -156,7 +156,7 @@ func (g *Graph) FindPath(path *[]Node, maxPathLength int, source, dest Node, pri
 
 	*srcCurrentLevel = append(*srcCurrentLevel, source)
 	*destCurrentLevel = append(*destCurrentLevel, dest)
-	var midPoint Node
+	var midPoint NodeIdx
 	midFound := false
 	srcPathLen := 1
 	destPathLen := 1
@@ -206,19 +206,19 @@ func (g *Graph) FindPath(path *[]Node, maxPathLength int, source, dest Node, pri
 	}
 }
 
-func setPathLen(p *[]Node, length int) {
+func setPathLen(p *[]NodeIdx, length int) {
 	if cap(*p) >= length {
 		*p = (*p)[:length]
 		return
 	}
 	*p = (*p)[:cap(*p)]
 	extra := length - len(*p)
-	*p = append(*p, make([]Node, extra)...)
+	*p = append(*p, make([]NodeIdx, extra)...)
 }
 
-func (g *Graph) nextLevel(currentLevel, scratchBuffer *[]Node, parents, otherParents *parentsMap, priority PriorityFunc) (Node, bool) {
+func (g *Graph) nextLevel(currentLevel, scratchBuffer *[]NodeIdx, parents, otherParents *parentsMap, priority PriorityFunc) (NodeIdx, bool) {
 	*scratchBuffer = (*scratchBuffer)[:0]
-	var midPoint Node
+	var midPoint NodeIdx
 	foundMid := false
 	levelLen := len(*currentLevel)
 	for i := 0; i < levelLen && !foundMid; i++ {
@@ -244,15 +244,15 @@ func (g *Graph) nextLevel(currentLevel, scratchBuffer *[]Node, parents, otherPar
 	return midPoint, foundMid
 }
 
-func prioritySort(nodes *[]Node, fn PriorityFunc) {
+func prioritySort(nodes *[]NodeIdx, fn PriorityFunc) {
 	sort.Slice(*nodes, func(i, j int) bool {
 		return fn((*nodes)[i]) > fn((*nodes)[j])
 	})
 }
 
 type graphSerializer struct {
-	EdgeTargets []Node `json:"neighbors"`
-	EdgeIndex   []int  `json:"edgeIndex"`
+	EdgeTargets []NodeIdx `json:"neighbors"`
+	EdgeIndex   []int     `json:"edgeIndex"`
 }
 
 // GobDecode implements gob.GobDecoder

@@ -7,12 +7,12 @@ import (
 var globalPathLen int
 
 func BenchmarkGraph_FindPath(b *testing.B) {
-	var path []Node
+	var path []NodeIdx
 	g := graphFromGob(b, "100k_graph.gob")
 	b.Run("100k", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			src := Node(i % len(g.edgeIndex) - 2)
-			dest := Node(i / 2 % len(g.edgeIndex) - 2)
+			src := NodeIdx(i%len(g.edgeIndex) - 2)
+			dest := NodeIdx(i/2%len(g.edgeIndex) - 2)
 			g.FindPath(&path, 999, src, dest, nil)
 			globalPathLen = len(path)
 		}
@@ -22,8 +22,8 @@ func BenchmarkGraph_FindPath(b *testing.B) {
 	g = graphFromGob(b, "1MM_graph.gob")
 	b.Run("1000k", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			src := Node(i % len(g.edgeIndex) - 2)
-			dest := Node(i / 2 % len(g.edgeIndex) - 2)
+			src := NodeIdx(i%len(g.edgeIndex) - 2)
+			dest := NodeIdx(i/2%len(g.edgeIndex) - 2)
 			g.FindPath(&path, 999, src, dest, nil)
 		}
 		b.ReportAllocs()

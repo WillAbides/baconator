@@ -7,14 +7,14 @@ const (
 )
 
 type parentsMap struct {
-	parents []Node
+	parents []NodeIdx
 	nodeSet []uint32
 }
 
 func newParentsMap(size int) *parentsMap {
 	return &parentsMap{
 		nodeSet: make([]uint32, (size+31)/32),
-		parents: make([]Node, size),
+		parents: make([]NodeIdx, size),
 	}
 }
 
@@ -24,13 +24,13 @@ func (p *parentsMap) clear() {
 	}
 }
 
-func (p *parentsMap) contains(node Node) bool {
+func (p *parentsMap) contains(node NodeIdx) bool {
 	bucket := uint32(node >> nodeSetBucketBits)
 	bit := uint32(1 << (node & nodeSetBucketMask))
 	return p.nodeSet[bucket]&bit != 0
 }
 
-func (p *parentsMap) setParent(node, parent Node) {
+func (p *parentsMap) setParent(node, parent NodeIdx) {
 	bucket := uint32(node >> nodeSetBucketBits)
 	bit := uint32(1 << (node & nodeSetBucketMask))
 	p.nodeSet[bucket] |= bit
@@ -38,6 +38,6 @@ func (p *parentsMap) setParent(node, parent Node) {
 	p.parents[node] = parent
 }
 
-func (p *parentsMap) getParent(node Node) Node {
+func (p *parentsMap) getParent(node NodeIdx) NodeIdx {
 	return p.parents[node]
 }

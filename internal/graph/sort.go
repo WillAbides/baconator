@@ -4,11 +4,11 @@ package graph
 //
 // github.com/shawnsmithdev/zermelo is licensed under MIT License and Copyright (c) 2014 Shawn Smith
 //
-// It is modified for this project to use Node instead of uint32
+// It is modified for this project to use NodeIdx instead of uint32
 
 // sortNodesBYOB sorts x using a Radix sort, using supplied buffer space. Panics if
 // len(x) does not equal len(buffer). Uses radix sort even on small slices.
-func sortNodesBYOB(x, buffer []Node) {
+func sortNodesBYOB(x, buffer []NodeIdx) {
 	const radix uint = 8
 	const bitSize uint = 32
 	if len(x) > len(buffer) {
@@ -24,7 +24,7 @@ func sortNodesBYOB(x, buffer []Node) {
 	for keyOffset := uint(0); keyOffset < bitSize; keyOffset += radix {
 		var offset [256]int // Keep track of where room is made for byte groups in the buffer
 		sorted := false
-		prev := Node(0)
+		prev := NodeIdx(0)
 
 		for _, elem := range from {
 			// For each elem to sort, fetch the byte at current radix
